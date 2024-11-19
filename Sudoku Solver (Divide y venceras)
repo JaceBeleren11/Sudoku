@@ -1,0 +1,200 @@
+#Para que este codigo funcione se tiene que añadir en la misma 
+#carpeta que este este codigo el generador de sudokus que esta 
+#en este mismo repositorio.
+
+#Una vez termine de resolver el sudoku el gif se guardara en la 
+#carpeta del usuario C:\Users\nombre_de_tu_usuario
+#Con el nombre Sudoku_resolucion.gif
+
+#Mejenes Chacon Luis Guillermo
+import os
+import copy
+import time
+from PIL import Image, ImageDraw, ImageFont
+
+class Celda:
+    def __init__(self):
+        self.__valor = 0
+        self.__fija = False
+        self.__opciones = []
+
+    def fijar_valor(self, dato, fija=False):
+        if not self.__fija:
+            self.__valor = dato
+            self.__fija = fija
+            self.__opciones = []
+            return True
+        return False
+
+    def borrar_valor(self):
+        if not self.__fija:
+            self.__valor = 0
+            return True
+        return False
+
+    def valor(self):
+        return self.__valor
+
+    def valida(self):
+        return self.__valor != 0
+
+    def fija(self):
+        return self.__fija
+
+    def __str__(self):
+        return str(self.__valor) if self.__valor else "_"
+
+
+class Sudoku:
+    def __init__(self):
+        self.__tablero = [[Celda() for x in range(9)] for y in range(9)]
+        self.__jugadas = []
+        self.imagenes = []  # Lista para guardar las imágenes de cada paso
+        self.cargar_tablero_inicial()  # Cargar el tablero inicial
+
+    def cargar_tablero_inicial(self):
+        try:
+            os.system("python generador.py > tablero.txt")
+            with open("tablero.txt", "r") as f:
+                f.readline()
+                fila = 0
+                while fila < 9:
+                    linea = f.readline().split()
+                    if linea:
+                        for i in range(9):
+                            if linea[i] != "_":
+                                self.__tablero[fila][i].fijar_valor(int(linea[i]), True)
+                        fila += 1
+            os.remove("tablero.txt")
+        except Exception as e:
+            print("Error al cargar el tablero inicial:", e)
+
+    def es_factible(self, fila, columna, valor):
+        if 0 < fila < 10 and 0 < columna < 10 and 0 < valor < 10:
+            for i in range(9):
+                if self.__tablero[fila-1][i].valor() == valor or self.__tablero[i][columna-1].valor() == valor:
+                    return False
+            f = 3 * ((fila-1) // 3)
+            c = 3 * ((columna-1) // 3)
+            for i in range(f, f+3):
+                for j in range(c, c+3):
+                    if self.__tablero[i][j].valor() == valor:
+                        return False
+            return True
+        return False
+
+    def resolver_con_divide_y_venceras(self):
+        start_time = time.time()
+        exito = self.divide_y_venceras(0, 0)
+        end_time = time.time()
+        print(f"\nTiempo de resolución: {end_time - start_time:.4f} segundos")
+        if exito:
+            print("¡Sudoku resuelto con éxito!")
+        else:
+            print("No se pudo resolver el Sudoku.")
+        self.crear_gif("sudoku_resolucion.gif")
+
+    def divide_y_venceras(self, fila, columna):
+        # Si llegamos al final del tablero, el Sudoku está resuelto
+        if fila == 9:
+            return True
+
+        # Si estamos al final de una fila, pasamos a la siguiente
+        if columna == 9:
+            return self.divide_y_venceras(fila + 1, 0)
+
+        # Si la celda ya está fija, seguimos con la siguiente
+        if self.__tablero[fila][columna].valida():
+            return self.divide_y_venceras(fila, columna + 1)
+
+        # Intentamos llenar la celda actual con valores válidos
+        for valor in range(1, 10):
+            if self.es_factible(fila + 1, columna + 1, valor):
+                self.__tablero[fila][columna].fijar_valor(valor)
+                self.guardar_imagen()  # Guardar imagen del paso actual
+
+                # Dividir el problema: intentamos resolver el resto del tablero
+                if self.divide_y_venceras(fila, columna + 1):
+                    return True
+
+                # Retroceder si no se encuentra solución
+                self.__tablero[fila][columna].borrar_valor()
+                self.guardar_imagen()
+
+        return False
+
+    def es_factible(self, fila, columna, valor):
+        """Verifica si un valor es válido en una posición dada."""
+        for i in range(9):
+            if self.__tablero[fila-1][i].valor() == valor or self.__tablero[i][columna-1].valor() == valor:
+                return False
+        f = 3 * ((fila-1) // 3)
+        c = 3 * ((columna-1) // 3)
+        for i in range(f, f+3):
+            for j in range(c, c+3):
+                if self.__tablero[i][j].valor() == valor:
+                    return False
+        return True
+
+    def encontrar_vacias(self):
+        vacias = []
+        for i in range(9):
+            for j in range(9):
+                if not self.__tablero[i][j].valida():
+                    vacias.append((i, j))
+        return vacias 
+
+
+
+    def guardar_imagen(self):
+        """Convierte el estado actual del tablero en una imagen y la guarda."""
+        img = Image.new("RGB", (270, 270), "white")
+        draw = ImageDraw.Draw(img)
+        font = ImageFont.load_default()
+
+        for i in range(9):
+            for j in range(9):
+                x, y = j * 30, i * 30
+                valor = str(self.__tablero[i][j].valor()) if self.__tablero[i][j].valida() else "_"
+                draw.text((x + 10, y + 5), valor, fill="black", font=font)
+
+                # Dibujar las líneas de la cuadrícula
+                if j % 3 == 0:
+                    draw.line([(x, 0), (x, 270)], fill="black", width=2)
+                if i % 3 == 0:
+                    draw.line([(0, y), (270, y)], fill="black", width=2)
+            draw.line([(270, 0), (270, 270)], fill="black", width=2)
+            draw.line([(0, 270), (270, 270)], fill="black", width=2)
+
+        self.imagenes.append(img)
+
+    def crear_gif(self, filename):
+        """Crea un GIF a partir de las imágenes almacenadas en `self.imagenes`."""
+        if self.imagenes:
+            self.imagenes[0].save(filename, save_all=True, append_images=self.imagenes[1:], loop=0, duration=500)
+            print(f"GIF guardado como {filename}")
+
+    def __str__(self):
+        tablero = ""
+        for i in range(9):
+            if i % 3 == 0:
+                tablero += "-------------------------\n"
+            for j in range(9):
+                if j % 3 == 0:
+                    tablero += "| "
+                tablero += str(self.__tablero[i][j]) + " "
+            tablero += "|\n"
+        tablero += "-------------------------\n"
+        return tablero
+
+
+def main():
+    sudoku = Sudoku()
+    print("Tablero inicial:")
+    print(sudoku)
+    print("Resolviendo Sudoku...\n")
+    sudoku.resolver_con_divide_y_venceras()
+
+
+if __name__ == '__main__':
+    main()
