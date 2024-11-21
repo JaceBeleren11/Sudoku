@@ -2,7 +2,13 @@
 #carpeta el codigo generador de sudokus que esta 
 #en este mismo repositorio
 
-#Mejenes Chacon Luis Guillermo
+#Una vez termine de resolver el sudoku el gif se guardara en la 
+#carpeta del usuario C:\Users\nombre_de_tu_usuario
+#Con el nombre Sudoku_resolucion.gif
+#y es probable que se tenga que usar un programa de edicion de video
+#como Microsoft Clipchamp para poder visualizar el gif correctamente
+
+#Hecho por Mejenes Chacon Luis Guillermo
 import os
 import copy
 import time
