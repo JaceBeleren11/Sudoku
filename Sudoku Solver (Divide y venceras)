@@ -1,6 +1,6 @@
 #Para que este codigo funcione se tiene que añadir en la misma 
-#carpeta que este codigo el generador de sudokus que esta 
-#en este mismo repositorio.
+#carpeta el codigo generador de sudokus que esta 
+#en este mismo repositorio
 
 #Una vez termine de resolver el sudoku el gif se guardara en la 
 #carpeta del usuario C:\Users\nombre_de_tu_usuario
