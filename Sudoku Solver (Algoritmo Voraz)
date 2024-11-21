@@ -14,68 +14,80 @@ import copy
 import time
 from PIL import Image, ImageDraw, ImageFont
 
+# Clase Celda representa una celda individual en el tablero de Sudoku.
 class Celda:
     def __init__(self):
-        self.__valor = 0
-        self.__fija = False
-        self.__opciones = []
+        self.__valor = 0  # Valor de la celda, por defecto 0 (vacío)
+        self.__fija = False  # Indica si la celda tiene un valor fijo
+        self.__opciones = []  # Lista de opciones posibles para la celda
 
     def fijar_valor(self, dato, fija=False):
+        # Fija un valor a la celda si no está ya fija
         if not self.__fija:
             self.__valor = dato
             self.__fija = fija
-            self.__opciones = []
+            self.__opciones = []  # Borra las opciones porque ya hay un valor
             return True
         return False
 
     def borrar_valor(self):
+        # Borra el valor de la celda si no es fija
         if not self.__fija:
             self.__valor = 0
             return True
         return False
 
     def valor(self):
+        # Devuelve el valor de la celda
         return self.__valor
 
     def valida(self):
+        # Indica si la celda tiene un valor asignado
         return self.__valor != 0
 
     def fija(self):
+        # Indica si la celda es fija
         return self.__fija
 
     def __str__(self):
+        # Devuelve el valor como cadena o un guion bajo si está vacío
         return str(self.__valor) if self.__valor else "_"
 
-
+# Clase Sudoku representa el tablero completo y las operaciones sobre él.
 class Sudoku:
     def __init__(self):
+        # Inicializa un tablero de 9x9 con objetos de la clase Celda
         self.__tablero = [[Celda() for x in range(9)] for y in range(9)]
-        self.__jugadas = []
-        self.imagenes = []  # Lista para guardar las imágenes de cada paso
-        self.cargar_tablero_inicial()  # Cargar el tablero inicial
+        self.__jugadas = []  # Historial de jugadas (no se usa aquí)
+        self.imagenes = []  # Lista para guardar imágenes de los pasos
+        self.cargar_tablero_inicial()  # Cargar un tablero inicial
 
     def cargar_tablero_inicial(self):
+        # Carga el tablero inicial desde un archivo generado por `generador.py`
         try:
-            os.system("python generador.py > tablero.txt")
+            os.system("python generador.py > tablero.txt")  # Genera un tablero
             with open("tablero.txt", "r") as f:
-                f.readline()
+                f.readline()  # Salta la primera línea del archivo
                 fila = 0
                 while fila < 9:
                     linea = f.readline().split()
                     if linea:
                         for i in range(9):
-                            if linea[i] != "_":
+                            if linea[i] != "_":  # Fija valores si no están vacíos
                                 self.__tablero[fila][i].fijar_valor(int(linea[i]), True)
                         fila += 1
-            os.remove("tablero.txt")
+            os.remove("tablero.txt")  # Borra el archivo temporal
         except Exception as e:
             print("Error al cargar el tablero inicial:", e)
 
     def es_factible(self, fila, columna, valor):
+        # Verifica si un valor puede colocarse en una celda sin romper las reglas
         if 0 < fila < 10 and 0 < columna < 10 and 0 < valor < 10:
+            # Comprobación de filas y columnas
             for i in range(9):
                 if self.__tablero[fila-1][i].valor() == valor or self.__tablero[i][columna-1].valor() == valor:
                     return False
+            # Comprobación del subcuadro 3x3
             f = 3 * ((fila-1) // 3)
             c = 3 * ((columna-1) // 3)
             for i in range(f, f+3):
@@ -86,14 +98,16 @@ class Sudoku:
         return False
 
     def resolver(self):
-        vacias = self.encontrar_vacias()
+        # Resuelve el Sudoku usando backtracking y mide el tiempo de ejecución
+        vacias = self.encontrar_vacias()  # Encuentra las celdas vacías
         start_time = time.time()
-        self.backtracking(vacias, 0)
+        self.backtracking(vacias, 0)  # Inicia el algoritmo de backtracking
         end_time = time.time()
         print(f"\nTiempo de resolución: {end_time - start_time:.4f} segundos")
-        self.crear_gif("sudoku_resolucion.gif")  # Crear el GIF al finalizar
+        self.crear_gif("sudoku_resolucion.gif")  # Genera un GIF al finalizar
 
     def encontrar_vacias(self):
+        # Encuentra las celdas vacías del tablero
         vacias = []
         for i in range(9):
             for j in range(9):
@@ -102,22 +116,23 @@ class Sudoku:
         return vacias
 
     def backtracking(self, vacias, k):
-        if k >= len(vacias):
+        # Implementa el algoritmo de backtracking para resolver el tablero
+        if k >= len(vacias):  # Si no quedan celdas vacías, se ha resuelto
             return True
 
         fila, columna = vacias[k]
         for valor in range(1, 10):
             if self.es_factible(fila + 1, columna + 1, valor):
                 self.__tablero[fila][columna].fijar_valor(valor)
-                self.guardar_imagen()  # Guardar cada paso como imagen
-                if self.backtracking(vacias, k + 1):
+                self.guardar_imagen()  # Guarda una imagen del estado actual
+                if self.backtracking(vacias, k + 1):  # Prueba con la siguiente celda
                     return True
                 self.__tablero[fila][columna].borrar_valor()
-                self.guardar_imagen()  # Guardar la imagen tras el retroceso
+                self.guardar_imagen()  # Guarda imagen tras el retroceso
         return False
 
     def guardar_imagen(self):
-        """Convierte el estado actual del tablero en una imagen y la guarda."""
+        # Convierte el estado actual del tablero en una imagen
         img = Image.new("RGB", (270, 270), "white")
         draw = ImageDraw.Draw(img)
         font = ImageFont.load_default()
@@ -128,7 +143,7 @@ class Sudoku:
                 valor = str(self.__tablero[i][j].valor()) if self.__tablero[i][j].valida() else "_"
                 draw.text((x + 10, y + 5), valor, fill="black", font=font)
 
-                # Dibujar las líneas de la cuadrícula
+                # Dibuja las líneas de la cuadrícula
                 if j % 3 == 0:
                     draw.line([(x, 0), (x, 270)], fill="black", width=2)
                 if i % 3 == 0:
@@ -136,15 +151,16 @@ class Sudoku:
             draw.line([(270, 0), (270, 270)], fill="black", width=2)
             draw.line([(0, 270), (270, 270)], fill="black", width=2)
 
-        self.imagenes.append(img)
+        self.imagenes.append(img)  # Guarda la imagen en la lista
 
     def crear_gif(self, filename):
-        """Crea un GIF a partir de las imágenes almacenadas en `self.imagenes`."""
+        # Crea un GIF a partir de las imágenes guardadas
         if self.imagenes:
             self.imagenes[0].save(filename, save_all=True, append_images=self.imagenes[1:], loop=0, duration=500)
             print(f"GIF guardado como {filename}")
 
     def __str__(self):
+        # Representa el tablero como una cadena para imprimirlo
         tablero = ""
         for i in range(9):
             if i % 3 == 0:
@@ -157,14 +173,13 @@ class Sudoku:
         tablero += "-------------------------\n"
         return tablero
 
-
+# Función principal
 def main():
     sudoku = Sudoku()
     print("Tablero inicial:")
     print(sudoku)
     print("Resolviendo Sudoku...\n")
     sudoku.resolver()
-
 
 if __name__ == '__main__':
     main()
